@@ -1,6 +1,6 @@
 package main
 
-//hello world
+//hello world code
 
 import "fmt"
 func main() {
