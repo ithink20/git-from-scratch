@@ -103,6 +103,9 @@ func printTreeContent(bufScanner *bufio.Scanner) {
 }
 
 func printBlobContent(bufScanner *bufio.Scanner) {
+    // format:
+    // <content-length><NUL> <content>
+    // ...
     for {
         fileMetadataBytes := scanBytesUntilDelimiter(bufScanner, 0, false)
         if (len(fileMetadataBytes) == 0) {
