@@ -104,16 +104,14 @@ func printTreeContent(bufScanner *bufio.Scanner) {
 
 func printBlobContent(bufScanner *bufio.Scanner) {
 	//format:
-	// <content-length><NUL><content>
-	// ...
+	// <content>
+    // ...
 	for {
 		fileMetadataBytes := scanBytesUntilDelimiter(bufScanner, 0, false)
 		if len(fileMetadataBytes) == 0 {
 			// end of blob contents
 			return
-		}
-		fileMetadataBytesLen := len(fileMetadataBytes)
-		fileMetadataBytes = fileMetadataBytes[:fileMetadataBytesLen]
+        }
 		fileMetadataString := string(fileMetadataBytes)
 		fmt.Print(fileMetadataString)
 	}
