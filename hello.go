@@ -102,6 +102,23 @@ func printTreeContent(bufScanner *bufio.Scanner) {
 	}
 }
 
+func printBlobContent(bufScanner *bufio.Scanner) {
+	//format:
+	// <content-length><NUL><content>
+	// ...
+	for {
+		fileMetadataBytes := scanBytesUntilDelimiter(bufScanner, 0, false)
+		if len(fileMetadataBytes) == 0 {
+			// end of blob contents
+			return
+		}
+		fileMetadataBytesLen := len(fileMetadataBytes)
+		fileMetadataBytes = fileMetadataBytes[:fileMetadataBytesLen]
+		fileMetadataString := string(fileMetadataBytes)
+		fmt.Print(fileMetadataString)
+	}
+}
+
 func printObjectFileContent(contentReader io.Reader) {
 	bufScanner := bufio.NewScanner(contentReader)
 	bufScanner.Split(bufio.ScanBytes) // read byte by byte
@@ -109,6 +126,8 @@ func printObjectFileContent(contentReader io.Reader) {
 	fmt.Printf("Type: %s, len: %d\n", header.objectType, header.length)
 	if header.objectType == "tree" {
 		printTreeContent(bufScanner)
+	} else if header.objectType == "blob" {
+		printBlobContent(bufScanner)
 	} else {
 		fmt.Println("Parsing this blob-type not yet supported")
 	}
