@@ -62,7 +62,7 @@ func scanCountBytes(bufScanner *bufio.Scanner, byteCount int, throwOnEOF bool) [
 
 func parseObjectHeader(bufScanner *bufio.Scanner) objectHeader {
 	// header format: "<object-type-string> <length-in-string>\0"
-	headerBytes := scanBytesUntilDelimiter(bufScanner, 0, true) // '\0' character in ascii is same as 0
+    headerBytes := scanBytesUntilDelimiter(bufScanner, 0, true) // '\0' character in ascii is same as 0
 	headerString := string(headerBytes[:len(headerBytes)-1])
 	headerComponents := strings.Split(headerString, " ")
 	if len(headerComponents) != 2 {
@@ -106,15 +106,9 @@ func printBlobContent(bufScanner *bufio.Scanner) {
 	//format:
 	// <content>
     // ...
-	for {
-		fileMetadataBytes := scanBytesUntilDelimiter(bufScanner, 0, false)
-		if len(fileMetadataBytes) == 0 {
-			// end of blob contents
-			return
-        }
-		fileMetadataString := string(fileMetadataBytes)
-		fmt.Print(fileMetadataString)
-	}
+    fileMetadataBytes := scanBytesUntilDelimiter(bufScanner, 0, false)
+    fileMetadataString := string(fileMetadataBytes)
+    fmt.Print(fileMetadataString)
 }
 
 func printObjectFileContent(contentReader io.Reader) {
