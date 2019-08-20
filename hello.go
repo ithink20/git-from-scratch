@@ -13,13 +13,14 @@ import (
 )
 
 const ObjectShaLength = 20
+const TruncatedSize = 3072
 
 type objectHeader struct {
 	objectType string
 	length     int
 }
 
-type commitHeader struct {
+type commitObject struct {
 	tree string
 	parent string
 	author string
@@ -103,16 +104,16 @@ func printBlobContent(bufScanner *bufio.Scanner, byteCount int) {
 	// ...
 	// print 3KB size (atmax) of object content
 	var count int
-	if (byteCount > 3072) {
-		count = 3072
+	if (byteCount > TruncatedSize) {
+		count = TruncatedSize
 	} else {
 		count = byteCount
 	}
 	fileMetadataBytes := scanCountBytes(bufScanner, count, true)
 	fileMetadataString := string(fileMetadataBytes)
 	fmt.Print(fileMetadataString)
-	if (byteCount > 3072) {
-		fmt.Printf("3KB truncated...\n")
+	if (byteCount > TruncatedSize) {
+		fmt.Printf("(... truncated to 3KB)\n")
 	}
 }
 
