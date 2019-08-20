@@ -19,6 +19,13 @@ type objectHeader struct {
 	length     int
 }
 
+type commitHeader struct {
+	tree string
+	parent string
+	author string
+	commit_message string
+}
+
 func scanSingleByte(bufScanner *bufio.Scanner, throwOnEOF bool) (byte, bool) {
 	readSuccess := bufScanner.Scan()
 	if !readSuccess {
@@ -75,6 +82,40 @@ func parseObjectHeader(bufScanner *bufio.Scanner) objectHeader {
 	return objectHeader{headerComponents[0], objectLen}
 }
 
+func printCommitContent(bufScanner *bufio.Scanner, byteCount int) {
+	//format:
+	// tree <tree sha>
+	// parent <parent sha>
+	// [parent <parent sha> if several parents from merges]
+	// author <author name> <author e-mail> <timestamp> <timezone>
+	// committer <author name> <author e-mail> <timestamp> <timezone>
+
+	// <commit message>
+
+	fileMetadataBytes := scanCountBytes(bufScanner, byteCount, true)
+	fileMetadataString := string(fileMetadataBytes)
+	fmt.Print(fileMetadataString)
+}
+
+func printBlobContent(bufScanner *bufio.Scanner, byteCount int) {
+	//format:
+	// <content>
+	// ...
+	// print 3KB size (atmax) of object content
+	var count int
+	if (byteCount > 3072) {
+		count = 3072
+	} else {
+		count = byteCount
+	}
+	fileMetadataBytes := scanCountBytes(bufScanner, count, true)
+	fileMetadataString := string(fileMetadataBytes)
+	fmt.Print(fileMetadataString)
+	if (byteCount > 3072) {
+		fmt.Printf("3KB truncated...\n")
+	}
+}
+
 func printTreeContent(bufScanner *bufio.Scanner) {
 	// format:
 	// <file-mode-in-string> <file-name>\0<20-bytes-of-hash-in-binary>
@@ -102,15 +143,6 @@ func printTreeContent(bufScanner *bufio.Scanner) {
 	}
 }
 
-func printBlobContent(bufScanner *bufio.Scanner) {
-	//format:
-	// <content>
-	// ...
-	fileMetadataBytes := scanBytesUntilDelimiter(bufScanner, 0, false)
-	fileMetadataString := string(fileMetadataBytes)
-	fmt.Print(fileMetadataString)
-}
-
 func printObjectFileContent(contentReader io.Reader) {
 	bufScanner := bufio.NewScanner(contentReader)
 	bufScanner.Split(bufio.ScanBytes) // read byte by byte
@@ -119,9 +151,11 @@ func printObjectFileContent(contentReader io.Reader) {
 	if header.objectType == "tree" {
 		printTreeContent(bufScanner)
 	} else if header.objectType == "blob" {
-		printBlobContent(bufScanner)
+		printBlobContent(bufScanner, header.length)
+	} else if header.objectType == "commit" {
+		printCommitContent(bufScanner, header.length)
 	} else {
-		fmt.Println("Parsing this blob-type not yet supported")
+		fmt.Println("Parsing this tag-type not yet supported")
 	}
 }
 
