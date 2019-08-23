@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"io/ioutil"
 )
 
 const ObjectShaLength = 20
@@ -161,15 +162,36 @@ func printObjectFileContent(contentReader io.Reader) {
 }
 
 func main() {
-	path := os.Args[1]
-	objectFile, err := os.Open(path)
-	if err != nil {
-		log.Fatal(err)
+	var path string
+	args := os.Args[1]
+	if args == "branches" { 	// git branch -l
+		path = ".git/refs/heads"
+		branches, err := ioutil.ReadDir(path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, branch := range branches {
+			file, err := os.Open(path + "/" + branch.Name())
+			if err != nil {
+				log.Fatal(err)
+			}
+			bufScanner := bufio.NewScanner(file)
+			bufScanner.Split(bufio.ScanBytes) // read byte by byte
+			fileMetadataBytes := scanBytesUntilDelimiter(bufScanner, 0, false) // '\0' character in ascii is same as 0
+			fileMetadataString := string(fileMetadataBytes[:len(fileMetadataBytes)-1])
+			fmt.Println(branch.Name() + " " + fileMetadataString)
+		}
+	} else {		// git cat-file -p <hash>
+		path = ".git/objects/"
+		objectFile, err := os.Open(path + args[0:2] + "/" + args[2:])
+		if err != nil {
+			log.Fatal(err)
+		}
+		contentReader, err := zlib.NewReader(objectFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		printObjectFileContent(contentReader)
+		contentReader.Close() // close reader when done
 	}
-	contentReader, err := zlib.NewReader(objectFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	printObjectFileContent(contentReader)
-	contentReader.Close() // close reader when done
 }
