@@ -114,7 +114,7 @@ func printBlobContent(bufScanner *bufio.Scanner, byteCount int) {
 	fileMetadataString := string(fileMetadataBytes)
 	fmt.Print(fileMetadataString)
 	if (byteCount > TruncatedSize) {
-		fmt.Printf("(... truncated to 3KB)\n")
+		fmt.Printf("\n\n(... truncated to 3KB)\n")
 	}
 }
 
@@ -161,37 +161,44 @@ func printObjectFileContent(contentReader io.Reader) {
 	}
 }
 
+func listBranches(args string) {
+	path := ".git/refs/heads"
+	branches, err := ioutil.ReadDir(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, branch := range branches {
+		file, err := os.Open(path + "/" + branch.Name())
+		if err != nil {
+			log.Fatal(err)
+		}
+		bufScanner := bufio.NewScanner(file)
+		bufScanner.Split(bufio.ScanBytes) // read byte by byte
+		fileMetadataBytes := scanBytesUntilDelimiter(bufScanner, 0x0A, false)
+		fileMetadataString := string(fileMetadataBytes[:len(fileMetadataBytes)-1])
+		fmt.Println(branch.Name() + " " + fileMetadataString)
+	}
+}
+
+func parseObjectFile(args string) {
+	path := ".git/objects/"
+	objectFile, err := os.Open(path + args[0:2] + "/" + args[2:])
+	if err != nil {
+		log.Fatal(err)
+	}
+	contentReader, err := zlib.NewReader(objectFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	printObjectFileContent(contentReader)
+	contentReader.Close() // close reader when done
+}
+
 func main() {
-	var path string
 	args := os.Args[1]
 	if args == "branches" { 	// git branch -l
-		path = ".git/refs/heads"
-		branches, err := ioutil.ReadDir(path)
-		if err != nil {
-			log.Fatal(err)
-		}
-		for _, branch := range branches {
-			file, err := os.Open(path + "/" + branch.Name())
-			if err != nil {
-				log.Fatal(err)
-			}
-			bufScanner := bufio.NewScanner(file)
-			bufScanner.Split(bufio.ScanBytes) // read byte by byte
-			fileMetadataBytes := scanBytesUntilDelimiter(bufScanner, 0, false) // '\0' character in ascii is same as 0
-			fileMetadataString := string(fileMetadataBytes[:len(fileMetadataBytes)-1])
-			fmt.Println(branch.Name() + " " + fileMetadataString)
-		}
+		listBranches(args)
 	} else {		// git cat-file -p <hash>
-		path = ".git/objects/"
-		objectFile, err := os.Open(path + args[0:2] + "/" + args[2:])
-		if err != nil {
-			log.Fatal(err)
-		}
-		contentReader, err := zlib.NewReader(objectFile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		printObjectFileContent(contentReader)
-		contentReader.Close() // close reader when done
+		parseObjectFile(args)
 	}
 }
