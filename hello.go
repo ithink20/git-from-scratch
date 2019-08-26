@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"io/ioutil"
+	"flag"
 )
 
 const ObjectShaLength = 20
@@ -161,7 +162,7 @@ func printObjectFileContent(contentReader io.Reader) {
 	}
 }
 
-func listBranches(args string) {
+func listBranches() {
 	path := ".git/refs/heads"
 	branches, err := ioutil.ReadDir(path)
 	if err != nil {
@@ -174,15 +175,15 @@ func listBranches(args string) {
 		}
 		bufScanner := bufio.NewScanner(file)
 		bufScanner.Split(bufio.ScanBytes) // read byte by byte
-		fileMetadataBytes := scanBytesUntilDelimiter(bufScanner, 0x0A, false)
+		fileMetadataBytes := scanBytesUntilDelimiter(bufScanner, byte('\n'), false)
 		fileMetadataString := string(fileMetadataBytes[:len(fileMetadataBytes)-1])
 		fmt.Println(branch.Name() + " " + fileMetadataString)
 	}
 }
 
-func parseObjectFile(args string) {
+func parseObjectFile(hash string) {
 	path := ".git/objects/"
-	objectFile, err := os.Open(path + args[0:2] + "/" + args[2:])
+	objectFile, err := os.Open(path + hash[0:2] + "/" + hash[2:])
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -195,10 +196,14 @@ func parseObjectFile(args string) {
 }
 
 func main() {
-	args := os.Args[1]
-	if args == "branches" { 	// git branch -l
-		listBranches(args)
-	} else {		// git cat-file -p <hash>
-		parseObjectFile(args)
+	branch := flag.Bool("branch", false, "list all branches")
+	hash := flag.String("hash", "", "hash of the object file")
+	flag.Parse()
+	if *branch == true { 	// git branch -l
+		listBranches()
+	} else if *hash != "" {		// git cat-file -p <hash>
+		parseObjectFile(*hash)
+	} else {
+		fmt.Println("No flag selected.. Try --help|-h")
 	}
 }
