@@ -4,18 +4,21 @@ import (
 	"bufio"
 	"compress/zlib"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
 	"strings"
-	"io/ioutil"
-	"flag"
 )
 
-const ObjectShaLength = 20
-const TruncatedSize = 3072
+// constants
+const (
+	ObjectShaLength = 20
+	TruncatedSize   = 3072
+)
 
 type objectHeader struct {
 	objectType string
@@ -23,10 +26,10 @@ type objectHeader struct {
 }
 
 type commitObject struct {
-	tree string
-	parent string
-	author string
-	commit_message string
+	tree          string
+	parent        string
+	author        string
+	commitMessage string
 }
 
 func scanSingleByte(bufScanner *bufio.Scanner, throwOnEOF bool) (byte, bool) {
@@ -106,7 +109,7 @@ func printBlobContent(bufScanner *bufio.Scanner, byteCount int) {
 	// ...
 	// print 3KB size (atmax) of object content
 	var count int
-	if (byteCount > TruncatedSize) {
+	if byteCount > TruncatedSize {
 		count = TruncatedSize
 	} else {
 		count = byteCount
@@ -114,7 +117,7 @@ func printBlobContent(bufScanner *bufio.Scanner, byteCount int) {
 	fileMetadataBytes := scanCountBytes(bufScanner, count, true)
 	fileMetadataString := string(fileMetadataBytes)
 	fmt.Print(fileMetadataString)
-	if (byteCount > TruncatedSize) {
+	if byteCount > TruncatedSize {
 		fmt.Printf("\n\n(... truncated to 3KB)\n")
 	}
 }
@@ -180,16 +183,20 @@ func listBranches() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	current_branch := readFile(".git/HEAD")
+	currentBranch := readFile(".git/HEAD")
 	// current-branch format
 	// .git/HEAD => ref: refs/heads/<branch-name>
 	for _, branch := range branches {
 		// format : each branch resides in path => .git/refs/heads/<branch-name>
-		branch_hash := readFile(path + "/" + branch.Name())
-		if branch.Name() == strings.Split(current_branch, "/")[2] {
-			fmt.Println("* " + branch.Name() + " " + branch_hash)
+		branchHash := readFile(path + "/" + branch.Name())
+		if branch.Name() == strings.Split(currentBranch, "/")[2] {
+			branchDescriptionPrefix := " "
+			if branch.Name() == currentBranch {
+				branchDescriptionPrefix = "*"
+			}
+			fmt.Printf("%s %s: %s\n", branchDescriptionPrefix, branch.Name(), branchHash)
 		} else {
-			fmt.Println(branch.Name() + " " + branch_hash)
+			fmt.Println(branch.Name() + " " + branchHash)
 		}
 	}
 }
@@ -212,11 +219,11 @@ func main() {
 	branch := flag.Bool("branch", false, "list all branches")
 	hash := flag.String("hash", "", "hash of the object file")
 	flag.Parse()
-	if *branch == true { 	// git branch -l
+	if *branch == true { // git branch -l
 		listBranches()
-	} else if *hash != "" {		// git cat-file -p <hash>
+	} else if *hash != "" { // git cat-file -p <hash>
 		parseObjectFile(*hash)
 	} else {
-		fmt.Println("No flag selected.. Try --help|-h")
+		flag.Usage()
 	}
 }
