@@ -4,17 +4,21 @@ import (
 	"bufio"
 	"compress/zlib"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
 	"strings"
-	"io/ioutil"
 )
 
-const ObjectShaLength = 20
-const TruncatedSize = 3072
+// constants
+const (
+	ObjectShaLength = 20
+	TruncatedSize   = 3072
+)
 
 type objectHeader struct {
 	objectType string
@@ -22,10 +26,10 @@ type objectHeader struct {
 }
 
 type commitObject struct {
-	tree string
-	parent string
-	author string
-	commit_message string
+	tree          string
+	parent        string
+	author        string
+	commitMessage string
 }
 
 func scanSingleByte(bufScanner *bufio.Scanner, throwOnEOF bool) (byte, bool) {
@@ -105,7 +109,7 @@ func printBlobContent(bufScanner *bufio.Scanner, byteCount int) {
 	// ...
 	// print 3KB size (atmax) of object content
 	var count int
-	if (byteCount > TruncatedSize) {
+	if byteCount > TruncatedSize {
 		count = TruncatedSize
 	} else {
 		count = byteCount
@@ -113,7 +117,7 @@ func printBlobContent(bufScanner *bufio.Scanner, byteCount int) {
 	fileMetadataBytes := scanCountBytes(bufScanner, count, true)
 	fileMetadataString := string(fileMetadataBytes)
 	fmt.Print(fileMetadataString)
-	if (byteCount > TruncatedSize) {
+	if byteCount > TruncatedSize {
 		fmt.Printf("\n\n(... truncated to 3KB)\n")
 	}
 }
@@ -161,28 +165,45 @@ func printObjectFileContent(contentReader io.Reader) {
 	}
 }
 
-func listBranches(args string) {
+func readFile(path string) string {
+	file, err := os.Open(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	bufScanner := bufio.NewScanner(file)
+	bufScanner.Split(bufio.ScanBytes) // read byte by byte
+	fileMetadataBytes := scanBytesUntilDelimiter(bufScanner, byte('\n'), false)
+	fileMetadataString := string(fileMetadataBytes[:len(fileMetadataBytes)-1])
+	return fileMetadataString
+}
+
+func listBranches() {
 	path := ".git/refs/heads"
 	branches, err := ioutil.ReadDir(path)
 	if err != nil {
 		log.Fatal(err)
 	}
+	currentBranch := readFile(".git/HEAD")
+	// current-branch format
+	// .git/HEAD => ref: refs/heads/<branch-name>
 	for _, branch := range branches {
-		file, err := os.Open(path + "/" + branch.Name())
-		if err != nil {
-			log.Fatal(err)
+		// format : each branch resides in path => .git/refs/heads/<branch-name>
+		branchHash := readFile(path + "/" + branch.Name())
+		if branch.Name() == strings.Split(currentBranch, "/")[2] {
+			branchDescriptionPrefix := " "
+			if branch.Name() == currentBranch {
+				branchDescriptionPrefix = "*"
+			}
+			fmt.Printf("%s %s: %s\n", branchDescriptionPrefix, branch.Name(), branchHash)
+		} else {
+			fmt.Println(branch.Name() + " " + branchHash)
 		}
-		bufScanner := bufio.NewScanner(file)
-		bufScanner.Split(bufio.ScanBytes) // read byte by byte
-		fileMetadataBytes := scanBytesUntilDelimiter(bufScanner, 0x0A, false)
-		fileMetadataString := string(fileMetadataBytes[:len(fileMetadataBytes)-1])
-		fmt.Println(branch.Name() + " " + fileMetadataString)
 	}
 }
 
-func parseObjectFile(args string) {
+func parseObjectFile(hash string) {
 	path := ".git/objects/"
-	objectFile, err := os.Open(path + args[0:2] + "/" + args[2:])
+	objectFile, err := os.Open(path + hash[0:2] + "/" + hash[2:])
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -195,10 +216,14 @@ func parseObjectFile(args string) {
 }
 
 func main() {
-	args := os.Args[1]
-	if args == "branches" { 	// git branch -l
-		listBranches(args)
-	} else {		// git cat-file -p <hash>
-		parseObjectFile(args)
+	branch := flag.Bool("branch", false, "list all branches")
+	hash := flag.String("hash", "", "hash of the object file")
+	flag.Parse()
+	if *branch == true { // git branch -l
+		listBranches()
+	} else if *hash != "" { // git cat-file -p <hash>
+		parseObjectFile(*hash)
+	} else {
+		flag.Usage()
 	}
 }
