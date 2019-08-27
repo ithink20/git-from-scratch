@@ -184,20 +184,17 @@ func listBranches() {
 		log.Fatal(err)
 	}
 	currentBranch := readFile(".git/HEAD")
+	currentBranch = strings.Split(currentBranch, "/")[2]
 	// current-branch format
 	// .git/HEAD => ref: refs/heads/<branch-name>
 	for _, branch := range branches {
 		// format : each branch resides in path => .git/refs/heads/<branch-name>
 		branchHash := readFile(path + "/" + branch.Name())
-		if branch.Name() == strings.Split(currentBranch, "/")[2] {
-			branchDescriptionPrefix := " "
-			if branch.Name() == currentBranch {
-				branchDescriptionPrefix = "*"
-			}
-			fmt.Printf("%s %s: %s\n", branchDescriptionPrefix, branch.Name(), branchHash)
-		} else {
-			fmt.Println(branch.Name() + " " + branchHash)
+		branchDescriptionPrefix := " "
+		if branch.Name() == currentBranch {
+			branchDescriptionPrefix = "*"
 		}
+		fmt.Printf("%s %s: %s\n", branchDescriptionPrefix, branch.Name(), branchHash)
 	}
 }
 
