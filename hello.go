@@ -162,22 +162,35 @@ func printObjectFileContent(contentReader io.Reader) {
 	}
 }
 
+func readFile(path string) string {
+	file, err := os.Open(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	bufScanner := bufio.NewScanner(file)
+	bufScanner.Split(bufio.ScanBytes) // read byte by byte
+	fileMetadataBytes := scanBytesUntilDelimiter(bufScanner, byte('\n'), false)
+	fileMetadataString := string(fileMetadataBytes[:len(fileMetadataBytes)-1])
+	return fileMetadataString
+}
+
 func listBranches() {
 	path := ".git/refs/heads"
 	branches, err := ioutil.ReadDir(path)
 	if err != nil {
 		log.Fatal(err)
 	}
+	current_branch := readFile(".git/HEAD")
+	// current-branch format
+	// .git/HEAD => ref: refs/heads/<branch-name>
 	for _, branch := range branches {
-		file, err := os.Open(path + "/" + branch.Name())
-		if err != nil {
-			log.Fatal(err)
+		// format : each branch resides in path => .git/refs/heads/<branch-name>
+		branch_hash := readFile(path + "/" + branch.Name())
+		if branch.Name() == strings.Split(current_branch, "/")[2] {
+			fmt.Println("* " + branch.Name() + " " + branch_hash)
+		} else {
+			fmt.Println(branch.Name() + " " + branch_hash)
 		}
-		bufScanner := bufio.NewScanner(file)
-		bufScanner.Split(bufio.ScanBytes) // read byte by byte
-		fileMetadataBytes := scanBytesUntilDelimiter(bufScanner, byte('\n'), false)
-		fileMetadataString := string(fileMetadataBytes[:len(fileMetadataBytes)-1])
-		fmt.Println(branch.Name() + " " + fileMetadataString)
 	}
 }
 
